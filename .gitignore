@@ -41,5 +41,6 @@ yarn-error.*
 /android
 
 
-App - Copy
-App - Copy (2)
+# ignore copied files
+App\ -\ Copy.tsx
+App\ -\ Copy\ \(2\).tsx
