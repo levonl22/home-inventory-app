@@ -1,39 +1,18 @@
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View, TextInput, TouchableOpacity, Modal } from 'react-native';
-import { useState, useEffect } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-
-type Item = {
-  name: string;
-  count: number;
-};
+import { useState } from 'react';
+import { useItems } from './useItems';
 
 export default function App() {
-  // ---- State ----
-  const [items, setItems] = useState<Item[]>([{ name: 'Milk', count: 1 }]);
+  const { items, loading, addItem, removeItem, updateItemName, updateItemCount } = useItems();
   const [text, setText] = useState('');
   const [count, setCount] = useState('');
   const [inputPlaceholder, setPlaceholder] = useState('Insert item name');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  // ---- AsyncStorage ----
-  const saveItems = async (items: Item[]) => {
-    await AsyncStorage.setItem('items', JSON.stringify(items));
-  };
-
-  useEffect(() => {
-    const loadItems = async () => {
-      const stored = await AsyncStorage.getItem('items');
-      if (stored) setItems(JSON.parse(stored));
-    };
-    loadItems();
-  }, []);
-
-  useEffect(() => {
-    saveItems(items);
-  }, [items]);
+  if (loading) return <Text>Loading...</Text>;
 
   // ---- Helpers ----
   const closeAddModal = () => {
@@ -43,43 +22,40 @@ export default function App() {
 
   const closeEditModal = () => {
     setShowEditModal(false);
-    setSelectedIndex(null);
+    setSelectedId(null);
   };
 
-  const addItem = () => {
+  const handleAdd = () => {
     if (text.trim() === '') return;
 
     const newCount = parseInt(count);
     const validCount = isNaN(newCount) ? 0 : newCount;
     if (validCount < 0) return;
 
-    if (items.some(item => item.name.toLowerCase() === text.toLowerCase())) {
+    const success = addItem(text, validCount);
+    if (!success) {
       setPlaceholder('Item already added');
       setText('');
       return;
     }
 
-    setItems([...items, { name: text, count: validCount }]);
     setText('');
     setCount('');
     setShowAddModal(false);
   };
 
-  const editItem = () => {
-    if (selectedIndex === null) return;
+  const handleEdit = () => {
+    if (selectedId === null) return;
 
     const newCount = parseInt(count);
     const validCount = isNaN(newCount) ? 0 : newCount;
 
     if (text.trim() === '') return;
     if (validCount < 0) return;
-    if (items.some((item, i) => i !== selectedIndex && item.name.toLowerCase() === text.toLowerCase())) return;
+    if (items.some(item => item.id !== selectedId && item.name.toLowerCase() === text.toLowerCase())) return;
 
-    setItems(
-      items.map((item, i) =>
-        i === selectedIndex ? { ...item, name: text, count: validCount } : item
-      )
-    );
+    updateItemName(selectedId, text);
+    updateItemCount(selectedId, validCount)
     closeEditModal();
   };
 
@@ -94,11 +70,12 @@ export default function App() {
 
       {/* ---- List ---- */}
       <View style={{ flex: 1, width: '100%' }}>
-        {items.map((item, index) => (
-          <View key={index} style={{ flexDirection: 'row', alignItems: 'center', width: '100%' }}>
+        {items.map((item) => (
+          <View key={item.id} style={{ flexDirection: 'row', alignItems: 'center', width: '100%' }}>
             <TouchableOpacity
+              style={{ flex : 1 }}
               onPress={() => {
-                setSelectedIndex(index);
+                setSelectedId(item.id);
                 setShowEditModal(true);
                 setText(item.name);
                 setCount(item.count.toString());
@@ -108,10 +85,10 @@ export default function App() {
                 ({item.count}) {item.name}
               </Text>
             </TouchableOpacity>
-
+        {/* ---- Remove Button ---- */}
             <TouchableOpacity
               style={{ marginLeft: 'auto', flexDirection: 'row' }}
-              onPress={() => setItems(items.filter((_, i) => i !== index))}
+              onPress={() => removeItem(item.id)}
             >
               <Text> X </Text>
             </TouchableOpacity>
@@ -158,7 +135,7 @@ export default function App() {
             />
 
             <TouchableOpacity
-              onPress={addItem}
+              onPress={handleAdd}
               style={{ backgroundColor: '#007AFF', padding: 10, borderRadius: 6, alignItems: 'center', marginBottom: 10 }}
             >
               <Text style={{ color: 'white', fontWeight: 'bold' }}>Add Item</Text>
@@ -190,7 +167,7 @@ export default function App() {
             />
 
             <TouchableOpacity
-              onPress={editItem}
+              onPress={handleEdit}
               style={{ backgroundColor: '#2e872eff', padding: 10, borderRadius: 6, alignItems: 'center', marginBottom: 10 }}
             >
               <Text style={{ color: 'white', fontWeight: 'bold' }}>Save Edit</Text>
