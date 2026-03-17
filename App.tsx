@@ -1,8 +1,15 @@
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View, TextInput, TouchableOpacity, Modal, TextInput as RNTextInput, ScrollView } from 'react-native';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useItems } from './useItems';
+import { Appearance } from 'react-native';
+import AddItemModal from './components/AddItemModal';
+import EditItemModal from './components/EditItemModal';
+import LoginModal from './components/LoginModal';
+import { supabase } from './supabase';
 
+
+Appearance.setColorScheme('light');
 
 export default function App() {
   const { items, loading, addItem, removeItem, updateItemName, updateItemCount } = useItems();
@@ -12,7 +19,21 @@ export default function App() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const nameInputRef = useRef<RNTextInput>(null);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [user, setUser] = useState<any>(null);
+
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setUser(data.session?.user ?? null);
+    });
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => listener.subscription.unsubscribe();
+  }, []);
 
   if (loading) return <Text>Loading...</Text>;
 
@@ -63,7 +84,12 @@ export default function App() {
 
   // ---- Render ----
   return (
-    <View style={{ flex: 1, padding: 16, alignItems: 'center', marginTop: 75, marginBottom: 50 }}>
+    <View style={{ flex: 1, padding: 24, marginTop: 80, marginBottom: 50, backgroundColor: '#fff' }}>
+      <View style={{ width: '100%', marginBottom: 10 }}>
+        <TouchableOpacity onPress={() => user ? supabase.auth.signOut() : setShowLoginModal(true)}>
+          <Text style={{ fontSize: 16, color: '#007AFF' }}>{user ? 'Sign Out' : 'Sign In'}</Text>
+        </TouchableOpacity>
+      </View>
       <Text style={{ textAlign: 'center', paddingBottom: 40, fontSize: 45, fontWeight: 'bold' }}>
         We Have Food At Home
       </Text>
@@ -113,7 +139,6 @@ export default function App() {
             setShowAddModal(true);
             setText('');
             setCount('');
-            setTimeout(() => nameInputRef.current?.focus(), 100);
           }}
         >
           <Text style={{ color: 'white', fontWeight: 'bold' }}>+</Text>
@@ -121,69 +146,33 @@ export default function App() {
       </View>
 
       {/* ---- Add Modal ---- */}
-      <Modal visible={showAddModal} transparent animationType="slide">
-        <View style={{ flex: 1, justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.3)' }}>
-          <View style={{ backgroundColor: 'white', padding: 20, borderRadius: 10, margin: 20 }}>
-            <TextInput
-              ref={nameInputRef}
-              value={text}
-              onChangeText={setText}
-              placeholder={inputPlaceholder}
-              style={{ borderWidth: 1, borderColor: '#ccc', padding: 10, borderRadius: 6, marginBottom: 10 }}
-            />
-            <TextInput
-              value={count}
-              onChangeText={setCount}
-              placeholder="Insert item quantity"
-              keyboardType="numeric"
-              style={{ borderWidth: 1, borderColor: '#ccc', padding: 10, borderRadius: 6, marginBottom: 10 }}
-            />
-
-            <TouchableOpacity
-              onPress={handleAdd}
-              style={{ backgroundColor: '#007AFF', padding: 10, borderRadius: 6, alignItems: 'center', marginBottom: 10 }}
-            >
-              <Text style={{ color: 'white', fontWeight: 'bold' }}>Add Item</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity onPress={closeAddModal}>
-              <Text style={{ textAlign: 'center' }}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+      <AddItemModal
+        visible={showAddModal}
+        onClose={closeAddModal}
+        onAdd={handleAdd}
+        text={text}
+        setText={setText}
+        count={count}
+        setCount={setCount}
+        placeholder={inputPlaceholder}
+      />
 
       {/* ---- Edit Modal ---- */}
-      <Modal visible={showEditModal} transparent animationType="slide">
-        <View style={{ flex: 1, justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.3)' }}>
-          <View style={{ backgroundColor: 'white', padding: 20, borderRadius: 10, margin: 20 }}>
-            <TextInput
-              value={text}
-              onChangeText={setText}
-              placeholder="Edit name"
-              style={{ borderWidth: 1, borderColor: '#ccc', padding: 10, borderRadius: 6, marginBottom: 10 }}
-            />
-            <TextInput
-              value={count}
-              onChangeText={setCount}
-              placeholder="Edit count"
-              keyboardType="numeric"
-              style={{ borderWidth: 1, borderColor: '#ccc', padding: 10, borderRadius: 6, marginBottom: 10 }}
-            />
-
-            <TouchableOpacity
-              onPress={handleEdit}
-              style={{ backgroundColor: '#2e872eff', padding: 10, borderRadius: 6, alignItems: 'center', marginBottom: 10 }}
-            >
-              <Text style={{ color: 'white', fontWeight: 'bold' }}>Save Edit</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity onPress={closeEditModal}>
-              <Text style={{ textAlign: 'center' }}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+      <EditItemModal
+        visible={showEditModal}
+        onClose={closeEditModal}
+        onSave={handleEdit}
+        text={text}
+        setText={setText}
+        count={count}
+        setCount={setCount}
+      />
+      {/* ---- Login Modal ---- */}
+      <LoginModal
+        visible={showLoginModal}
+        onClose={() => setShowLoginModal(false)}
+        onSuccess={() => setShowLoginModal(false)}
+      />
     </View>
   );
 }

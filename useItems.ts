@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Item } from './types';
 import { saveItems, loadItems } from './storage';
+import { syncItemsToSupabase, loadItemsFromSupabase } from './supabaseStorage';
 
 export function useItems() {
     const [items, setItems] = useState<Item[]>([]);
@@ -17,6 +18,7 @@ export function useItems() {
 
     useEffect(() => {
         if (!loading) saveItems(items);
+        // TODO: if logged in, sync to Supabase
     }, [items]);
 
     function createItem(name: string, count: number): Item {
