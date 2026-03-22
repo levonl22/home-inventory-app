@@ -12,7 +12,8 @@ import { supabase } from './supabase';
 Appearance.setColorScheme('light');
 
 export default function App() {
-  const { items, loading, addItem, removeItem, updateItemName, updateItemCount } = useItems();
+  const [user, setUser] = useState<any>(null);
+  const { items, loading, addItem, removeItem, updateItemName, updateItemCount } = useItems(user);
   const [text, setText] = useState('');
   const [count, setCount] = useState('');
   const [inputPlaceholder, setPlaceholder] = useState('Insert item name');
@@ -20,7 +21,6 @@ export default function App() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
-  const [user, setUser] = useState<any>(null);
 
 
   useEffect(() => {
