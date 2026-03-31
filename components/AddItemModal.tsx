@@ -28,12 +28,14 @@ export default function AddItemModal({ visible, onClose, onAdd, text, setText, c
             value={text}
             onChangeText={setText}
             placeholder={placeholder}
+            placeholderTextColor="#999"
             style={{ borderWidth: 1, borderColor: '#ccc', padding: 10, borderRadius: 6, marginBottom: 10 }}
           />
           <TextInput
             value={count}
             onChangeText={setCount}
             placeholder="Insert item quantity"
+            placeholderTextColor="#999"
             keyboardType="numeric"
             style={{ borderWidth: 1, borderColor: '#ccc', padding: 10, borderRadius: 6, marginBottom: 10 }}
           />

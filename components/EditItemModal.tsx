@@ -19,12 +19,14 @@ export default function EditItemModal({ visible, onClose, onSave, text, setText,
             value={text}
             onChangeText={setText}
             placeholder="Edit name"
+            placeholderTextColor="#999"
             style={{ borderWidth: 1, borderColor: '#ccc', padding: 10, borderRadius: 6, marginBottom: 10 }}
           />
           <TextInput
             value={count}
             onChangeText={setCount}
             placeholder="Edit count"
+            placeholderTextColor="#999"
             keyboardType="numeric"
             style={{ borderWidth: 1, borderColor: '#ccc', padding: 10, borderRadius: 6, marginBottom: 10 }}
           />
