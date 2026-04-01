@@ -1,5 +1,5 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, Modal, TextInput as RNTextInput, ScrollView } from 'react-native';
+import { Alert, StyleSheet, Text, View, TextInput, TouchableOpacity, Modal, TextInput as RNTextInput, ScrollView } from 'react-native';
 import { useState, useRef, useEffect } from 'react';
 import { useItems } from './useItems';
 import { Appearance } from 'react-native';
@@ -9,11 +9,14 @@ import LoginModal from './components/LoginModal';
 import { supabase } from './supabase';
 
 
+
 Appearance.setColorScheme('light');
 
 export default function App() {
+
+  // ---- State ----
   const [user, setUser] = useState<any>(null);
-  const { items, loading, addItem, removeItem, updateItemName, updateItemCount } = useItems(user);
+  const { items, loading, addItem, removeItem, updateItemName, updateItemCount, pendingMergeItems, resolveMerge } = useItems(user);
   const [text, setText] = useState('');
   const [count, setCount] = useState('');
   const [inputPlaceholder, setPlaceholder] = useState('Insert item name');
@@ -22,7 +25,7 @@ export default function App() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
 
-
+  // Restores session on app open and listens for auth state changes (sign in / sign out)
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       setUser(data.session?.user ?? null);
@@ -34,6 +37,23 @@ export default function App() {
 
     return () => listener.subscription.unsubscribe();
   }, []);
+
+  // Prompts the user to merge or discard local items into cloud
+  useEffect(() => {
+    if (pendingMergeItems.length === 0) return;
+
+    const names = pendingMergeItems.map(i => `${i.name} (x${i.count})`).join(', ');
+
+    Alert.alert(
+      'Local items found',
+      `These items are on your device but not in your household: ${names}. Add them?`,
+      [
+        { text: 'Discard', style: 'destructive', onPress: () => resolveMerge(false) },
+        { text: 'Add to household', onPress: () => resolveMerge(true) },
+      ]
+    );
+  }, [pendingMergeItems]);
+  
 
   if (loading) return <Text>Loading...</Text>;
 
@@ -48,6 +68,7 @@ export default function App() {
     setSelectedId(null);
   };
 
+  // Checks validity of count and duplicate items. If already added, prompt duplicate message.
   const handleAdd = () => {
     if (text.trim() === '') return;
 
@@ -67,6 +88,8 @@ export default function App() {
     setShowAddModal(false);
   };
 
+  // Validates the edited name and count. Prevents renaming to an existing item's name,
+  // excluding the item being edited.
   const handleEdit = () => {
     if (selectedId === null) return;
 
