@@ -32,16 +32,35 @@ export async function getOrCreateHousehold(userId: string): Promise<number> {
   }
 
 export async function syncItemsToSupabase(items: Item[], householdId: number): Promise<void> {
-  await supabase.from('items').delete().eq('household_id', householdId);
-  if (items.length === 0) return;
-  await supabase.from('items').insert(
+  if (items.length === 0) {
+    await supabase.from('items').delete().eq('household_id', householdId);
+    return;
+  }
+
+  // Upsert based on household_id + name. Updates existing items, inserts new ones.
+  await supabase.from('items').upsert(
     items.map(item => ({
       household_id: householdId,
       name: item.name,
       count: item.count,
       expiration_date: item.expiration_date ?? null,
-    }))
+    })),
+    { onConflict: 'household_id,name' }
   );
+
+  // Remove items from cloud that no longer exist locally
+  const { data: cloudItems } = await supabase
+    .from('items')
+    .select('name')
+    .eq('household_id', householdId);
+
+  if (cloudItems) {
+    const localNames = new Set(items.map(i => i.name.toLowerCase()));
+    const toDelete = cloudItems.filter(i => !localNames.has(i.name.toLowerCase()));
+    if (toDelete.length > 0) {
+      await supabase.from('items').delete().eq('household_id', householdId).in('name', toDelete.map(i => i.name));
+    }
+  }
 }
 
 export async function loadItemsFromSupabase(householdId: number): Promise<Item[]> {
