@@ -1,10 +1,11 @@
 ## [04-06-26] APK & Expo mixup, token expiration, duplicate items in database
 
 **What happened:** 
-Opened WHFAH APK to test features. Noticed I was signed out, and I got this error:
+Opened WHFAH APK to test features. Noticed I was signed out on the APK with no error shown.
+Separately, when running through Expo via npm start, got this console error:
 ERROR [AuthApiError: Invalid Refresh Token: Refresh Token Not Found]
-Restarted app, signed in, signed out to test features. The merge prompt was not showing up to merge local to cloud.
-Tested on Expo through npm start -- worked just fine. Noticed items completely changed and had duplicate items -- which it shouldn't.
+Signed in on APK, signed out to test features. The merge prompt was not showing up.
+Noticed items completely changed and had duplicate items in both Expo and Supabase — which shouldn't happen.
 
 **How to reproduce:**
 No known reproduction at the moment. Suspect refresh token needs to expire again to resurface.
