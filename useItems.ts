@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Item } from './types';
 import { saveItems, loadItems } from './storage';
 import { syncItemsToSupabase, loadItemsFromSupabase, getOrCreateHousehold } from './supabaseStorage';
+import { supabase } from './supabase';
 
 export function useItems(user: any) {
 
@@ -73,6 +74,38 @@ export function useItems(user: any) {
 
         initSupabase();
     }, [user, loading]);
+
+    // ---- Real Time Sync ----
+    // Subscribes to live changes on the household's items from Supabase.
+    // Any insert, update, or delete from another household member updates the local list.
+    useEffect(() => {
+        if (!householdId) return;
+
+        const channel = supabase
+            .channel(`items:${householdId}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'items',
+                    filter: `household_id=eq.${householdId}`,
+                },
+                async () => {
+                    // Re-fetch the full list on any change rather than patching state manually
+                    const cloudItems = await loadItemsFromSupabase(householdId);
+                    isInitialLoad.current = true;
+                    setItems(cloudItems);
+                    await saveItems(cloudItems);
+                }
+            )
+            .subscribe();
+
+        // Unsubscribe when household changes or user signs out
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [householdId]);
 
     // ---- Persist and Sync ----
     // Runs whenever items change. Saves to AsyncStorage always.
